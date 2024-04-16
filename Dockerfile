@@ -2,6 +2,7 @@ FROM ubuntu:24.04
 
 EXPOSE 6666/tcp
 
+USER root
 RUN apt update
 RUN apt install -y clamav-daemon
 RUN /etc/init.d/clamav-freshclam stop
@@ -17,4 +18,5 @@ RUN chown clamav:clamav /run/clamav
 
 COPY ./entrypoint.sh ./
 
+USER clamav
 CMD ["sh", "entrypoint.sh"]
