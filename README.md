@@ -12,3 +12,6 @@ This image spins up a ClamAV daemon instance allowing to build services alongsid
 ```bash
 docker run -p 6666:6666 iolave/clamav
 ```
+
+## Tags
+View available tags in the [docker hub repo](https://hub.docker.com/r/iolave/clamav/tags).
