@@ -9,11 +9,19 @@ This image spins up a ClamAV daemon instance allowing to build services alongsid
 
 - Feel free to experiment modifying the `./config/fresclam.conf` file for your needs.
 - Docker args are not allowed yet for settings like `fresclam.conf` and `clamd.conf`
-- Exposes port `6666`.
+- Exposes port `3310`.
 
-## Create a container
+## Usage
+### Build locally
+Clone this repository or download the [latest release](https://github.com/iolave/docker-clamav/releases) and run the following docker build command:
+
 ```bash
-docker run -p 6666:6666 iolave/clamav
+docker build -t iolave/clamav .
+```
+
+### Pre-build image
+```bash
+docker run -p 3310:3310 iolave/clamav
 ```
 
 ## Tags

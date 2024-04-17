@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-EXPOSE 6666/tcp
+EXPOSE 3310/tcp
 
 USER root
 RUN apt update
@@ -13,7 +13,7 @@ RUN apt install -y jq
 RUN echo $(cat apt-dependencies.json | jq -r '."clamav-daemon"') >> tmp
 
 RUN apt install -y clamav-daemon=$(cat apt-dependencies.json | jq -r '."clamav-daemon"')
-RUN echo "TCPSocket 6666" >> /etc/clamav/clamd.conf
+RUN echo "TCPSocket 3310" >> /etc/clamav/clamd.conf
 RUN /etc/init.d/clamav-freshclam stop
 
 RUN freshclam --config-file freshclam.conf
