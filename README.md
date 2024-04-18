@@ -8,7 +8,7 @@ This image spins up a ClamAV daemon instance allowing to build services alongsid
 
 
 - Feel free to experiment modifying the `./config/fresclam.conf` file for your needs.
-- Docker args are not allowed yet for settings like `fresclam.conf` and `clamd.conf`
+- Docker envs are not yet supported for clamav related settings (`fresclam.conf` and `clamd.conf` files).
 - Exposes port `3310`.
 
 ## Usage
