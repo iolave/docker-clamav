@@ -13,7 +13,7 @@ This image spins up a ClamAV daemon instance allowing to build services alongsid
 
 ## Usage
 ### Build locally
-Clone this repository or download the [latest release](https://github.com/iolave/docker-clamav/releases) and run the following docker build command:
+Clone this repository or download the [latest release](https://github.com/iolave/docker-clamav/releases/latest) and run the following docker build command:
 
 ```bash
 docker build -t iolave/clamav .
