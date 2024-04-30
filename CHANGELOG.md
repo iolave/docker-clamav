@@ -1,4 +1,8 @@
 # CHANGELOG
+## v1.0.2
+### PATCH
+- Changed defualt exposed port to `3310` as [clamav docs](https://docs.clamav.net) says.
+- Adds `version` file for managing releases.
 
 ## v1.0.1
 ### PATCH
