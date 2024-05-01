@@ -4,7 +4,9 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore: [
-      ".github"
+      ".github",
+      "README.md",
+      "LICENSE"
     ]
 
 jobs:
@@ -149,3 +151,39 @@ jobs:
           push: true
           tags: |
             iolave/clamav:latest, iolave/clamav:${{ needs.get-tags.outputs.patch }}, iolave/clamav:${{ needs.get-tags.outputs.minor }}, iolave/clamav:${{ needs.get-tags.outputs.major }}
+  create-release:
+    runs-on: "ubuntu-latest"
+    needs: [ get-tags, check-tags, push-tags ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get previous version from CHANGELOG 
+        id: prev
+        shell: bash
+        run: |
+          prev_version=$(cat CHANGELOG.md | grep -o '##\ v[0-9]*\.[0-9]*\.[0-9]*' | sed -e s/##\ //g | sed -n 2p)
+          echo "Previous version: $prev_version"
+          echo "previous_version=$prev_version" >> "$GITHUB_OUTPUT"
+      - name: Set release notes
+        id: notes
+        shell: bash
+        run: |
+          echo "# CHANGELOG" > release-notes.md
+          prev_version=$(cat CHANGELOG.md | grep -o '##\ v[0-9]*\.[0-9]*\.[0-9]*' | sed -e s/##\ //g | sed -n 2p)
+          sed -n '/## v${{ needs.get-tags.outputs.patch }}/,/## ${{ steps.prev.outputs.previous_version }}/p' CHANGELOG.md | sed  -e s/##\ v[0-9]*\.[0-9]*\.[0-9]*//g >> release-notes.md
+          echo "**Full Changelog**: https://github.com/iolave/docker-clamav/compare/v${{ needs.get-tags.outputs.patch }}...${{ steps.prev.outputs.previous_version }}" >> release-notes.md
+          notes=$(cat release-notes.md | base64 -w 0)
+          echo "release_notes=$notes" >> "$GITHUB_OUTPUT"
+      - uses: akiojin/decode-base64-github-action@v0.1.0
+        id: decode-base64
+        with:
+          base64: ${{ steps.notes.outputs.release_notes }}
+      - name: Output release notes
+        shell: bash
+        run: echo "${{ steps.decode-base64.outputs.decoded }}"
+      - name: Release pushed tag
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.decode-base64.outputs.decoded }}
+          tag_name: v${{ needs.get-tags.outputs.patch }}
+          make_latest: true
