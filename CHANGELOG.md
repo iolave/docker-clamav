@@ -1,7 +1,7 @@
 # CHANGELOG
 ## v1.1.0
 ### MINOR
-- Changed defualt exposed port to `3310` as [clamav docs](https://docs.clamav.net) says.
+- Changed default exposed port to `3310` as [clamav docs](https://docs.clamav.net) says.
 ### PATCH
 - Adds `version` file for managing releases.
 
