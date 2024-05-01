@@ -1,0 +1,144 @@
+name: Docker publish
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore: [
+      ".github",
+      "README.md",
+      "LICENSE"
+    ]
+
+jobs:
+  get-version-file-version:
+    name: Get version
+    runs-on: "ubuntu-latest"
+    outputs:
+      current_version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get version file version
+        id: get_version
+        shell: bash
+        run: |
+          if [ ! -f "./version" ]; then
+            echo "ERROR: version file does not exist"
+            exit 1
+          fi
+          CURRENT_VERSION=$(cat version | sed s/v//g)
+          echo "current version: $CURRENT_VERSION"
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+  get-tags:
+    name: Get tags
+    runs-on: "ubuntu-latest"
+    outputs:
+      patch: ${{ steps.tags.outputs.patch }}
+      minor: ${{ steps.tags.outputs.minor }}
+      major: ${{ steps.tags.outputs.major }}
+      full: ${{ steps.tags.outputs.full }}
+    needs: [ get-version-file-version ]
+    steps:
+      - name: Get Major/Minor/Patch tags
+        id: tags
+        shell: bash
+        run: |
+          TAG_PATCH=$(echo ${{ needs.get-version-file-version.outputs.current_version }} | cut -d '.' -f 1,2,3)
+          TAG_MINOR=$(echo ${{ needs.get-version-file-version.outputs.current_version }} | cut -d '.' -f 1,2)
+          TAG_MAJOR=$(echo ${{ needs.get-version-file-version.outputs.current_version }} | cut -d '.' -f 1)
+          TAG_FULL=$TAG_PATCH
+          echo "patch tag: $TAG_PATCH"; echo "patch=$TAG_PATCH" >> "$GITHUB_OUTPUT"
+          echo "minor tag: $TAG_MINOR"; echo "minor=$TAG_MINOR" >> "$GITHUB_OUTPUT"
+          echo "major tag: $TAG_MAJOR"; echo "major=$TAG_MAJOR" >> "$GITHUB_OUTPUT"
+          echo "full tag: $TAG_FULL"; echo "full=$TAG_FULL" >> "$GITHUB_OUTPUT"
+  check-tags:
+    name: Check for existing tags
+    runs-on: "ubuntu-latest"
+    outputs:
+      exists_latest: ${{ steps.check_tags.outputs.exists_latest }}
+    needs: [ get-tags ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check tags
+        id: check_tags
+        shell: bash
+        run: |
+          tags=$(git --no-pager tag --list)
+          patch="${{ needs.get-tags.outputs.patch }}"
+          if [[ $tags =~ "${{ needs.get-tags.outputs.patch }}" ]]; then
+            echo "ERROR: tag $patch exists. Try removing it manually";
+            exit 1
+          else 
+            echo "INFO: tag $patch does not exist. All looks good"
+          fi
+  push-tags:
+    name: Push tags
+    runs-on: "ubuntu-latest"
+    needs: [ get-tags, check-tags ]
+    steps:
+      - name: Push patch tag
+        uses: pkgdeps/git-tag-action@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_repo: ${{ github.repository }}
+          git_commit_sha: ${{ github.sha }}
+          version: ${{ needs.get-tags.outputs.patch }}
+  publish:
+    name: Build docker image and publish
+    runs-on: ubuntu-latest
+    needs: [ get-tags, push-tags ]
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            iolave/clamav:latest, iolave/clamav:${{ needs.get-tags.outputs.patch }}, iolave/clamav:${{ needs.get-tags.outputs.minor }}, iolave/clamav:${{ needs.get-tags.outputs.major }}
+  create-release:
+    runs-on: "ubuntu-latest"
+    needs: [ get-tags, check-tags, push-tags ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get previous version from CHANGELOG 
+        id: prev
+        shell: bash
+        run: |
+          prev_version=$(cat CHANGELOG.md | grep -o '##\ v[0-9]*\.[0-9]*\.[0-9]*' | sed -e s/##\ //g | sed -n 2p)
+          echo "Previous version: $prev_version"
+          echo "previous_version=$prev_version" >> "$GITHUB_OUTPUT"
+      - name: Set release notes
+        id: notes
+        shell: bash
+        run: |
+          echo "# CHANGELOG" > release-notes.md
+          prev_version=$(cat CHANGELOG.md | grep -o '##\ v[0-9]*\.[0-9]*\.[0-9]*' | sed -e s/##\ //g | sed -n 2p)
+          sed -n '/## v${{ needs.get-tags.outputs.patch }}/,/## ${{ steps.prev.outputs.previous_version }}/p' CHANGELOG.md | sed  -e s/##\ v[0-9]*\.[0-9]*\.[0-9]*//g >> release-notes.md
+          echo "**Full Changelog**: https://github.com/iolave/docker-clamav/compare/v${{ needs.get-tags.outputs.patch }}...${{ steps.prev.outputs.previous_version }}" >> release-notes.md
+          notes=$(cat release-notes.md | base64 -w 0)
+          echo "release_notes=$notes" >> "$GITHUB_OUTPUT"
+      - uses: akiojin/decode-base64-github-action@v0.1.0
+        id: decode-base64
+        with:
+          base64: ${{ steps.notes.outputs.release_notes }}
+      - name: Output release notes
+        shell: bash
+        run: echo "${{ steps.decode-base64.outputs.decoded }}"
+      - name: Release pushed tag
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.decode-base64.outputs.decoded }}
+          tag_name: v${{ needs.get-tags.outputs.patch }}
+          make_latest: true
