@@ -114,7 +114,7 @@ jobs:
           echo "# CHANGELOG" > release-notes.md
           prev_version=$(cat CHANGELOG.md | grep -o '##\ v[0-9]*\.[0-9]*\.[0-9]*' | sed -e s/##\ //g | sed -n 2p)
           sed -n '/## v${{ needs.get-tags.outputs.patch }}/,/## ${{ steps.prev.outputs.previous_version }}/p' CHANGELOG.md | sed  -e s/##\ v[0-9]*\.[0-9]*\.[0-9]*//g >> release-notes.md
-          echo "**Full Changelog**: https://github.com/iolave/docker-clamav/compare/v${{ needs.get-tags.outputs.patch }}...${{ steps.prev.outputs.previous_version }}" >> release-notes.md
+          echo "**Full Changelog**: https://github.com/iolave/docker-clamav/compare/${{ steps.prev.outputs.previous_version }}...v${{ needs.get-tags.outputs.patch }}" >> release-notes.md
           notes=$(cat release-notes.md | base64 -w 0)
           echo "release_notes=$notes" >> "$GITHUB_OUTPUT"
       - uses: akiojin/decode-base64-github-action@v0.1.0
