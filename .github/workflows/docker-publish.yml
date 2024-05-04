@@ -74,22 +74,10 @@ jobs:
           else 
             echo "INFO: tag $patch does not exist. All looks good"
           fi
-  push-tags:
-    name: Push tags
-    runs-on: "ubuntu-latest"
-    needs: [ get-tags, check-tags ]
-    steps:
-      - name: Push patch tag
-        uses: pkgdeps/git-tag-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_repo: ${{ github.repository }}
-          git_commit_sha: ${{ github.sha }}
-          version: ${{ needs.get-tags.outputs.patch }}
   publish:
     name: Build docker image and publish
     runs-on: ubuntu-latest
-    needs: [ get-tags, push-tags ]
+    needs: [ get-tags ]
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -108,7 +96,7 @@ jobs:
             iolave/clamav:latest, iolave/clamav:${{ needs.get-tags.outputs.patch }}, iolave/clamav:${{ needs.get-tags.outputs.minor }}, iolave/clamav:${{ needs.get-tags.outputs.major }}
   create-release:
     runs-on: "ubuntu-latest"
-    needs: [ get-tags, check-tags, push-tags ]
+    needs: [ get-tags, check-tags ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
